@@ -126,19 +126,20 @@ def parse_eff_range(eff):
 
 
 # ------------------------------------------------------------
-# LOAD FILES
+# LOAD FILES (SAFE)
 # ------------------------------------------------------------
 
-if not os.path.exists(RAMIS_FILE):
-    raise FileNotFoundError(f"Missing file: {RAMIS_FILE}")
+try:
+    ramis_wb = load_workbook(RAMIS_FILE, data_only=True)
+except Exception as e:
+    raise Exception(f"Error loading RAMIS file: {e}")
 
-if not os.path.exists(MACL_FILE):
-    raise FileNotFoundError(f"Missing file: {MACL_FILE}")
+try:
+    macl_wb = load_workbook(MACL_FILE)
+except Exception as e:
+    raise Exception(f"Error loading MACL file: {e}")
 
-ramis_wb = load_workbook(RAMIS_FILE, data_only=True)
 ramis_ws = ramis_wb.active
-
-macl_wb = load_workbook(MACL_FILE)
 macl_ws = macl_wb.active
 
 
@@ -209,8 +210,9 @@ for row in ramis_ws.iter_rows(min_row=2, max_col=6, values_only=True):
 # SAVE OUTPUT
 # ------------------------------------------------------------
 
+import os
 os.makedirs("output", exist_ok=True)
 
 macl_wb.save(OUTPUT_FILE)
 
-print(f"✅ Output saved: {OUTPUT_FILE}")
+print(f"✅ STEP 1 COMPLETE: {OUTPUT_FILE}")
