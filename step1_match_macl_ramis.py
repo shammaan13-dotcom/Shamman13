@@ -169,7 +169,7 @@ for r in range(3, macl_ws.max_row + 1):
 
 
 # ------------------------------------------------------------
-# MAIN MATCH LOOP
+# MAIN MATCH LOOP (FIXED + RELIABLE WRITE)
 # ------------------------------------------------------------
 
 for row in ramis_ws.iter_rows(min_row=2, max_col=6, values_only=True):
@@ -185,6 +185,8 @@ for row in ramis_ws.iter_rows(min_row=2, max_col=6, values_only=True):
 
     r_start, r_end = parse_eff_range(eff)
 
+    matched = False
+
     for r in range(3, macl_ws.max_row + 1):
 
         macl_air = macl_ws.cell(r, 1).value
@@ -196,22 +198,32 @@ for row in ramis_ws.iter_rows(min_row=2, max_col=6, values_only=True):
             continue
 
         macl_air = str(macl_air).strip().upper()
+        macl_flt_str = str(macl_flt).strip().upper()
 
+        # --- RELAXED MATCH (CRITICAL FIX) ---
         if airline != macl_air:
             continue
 
         if day != macl_day:
             continue
 
-        if not match_flight(macl_flt, flt):
+        # primary match
+        if match_flight(macl_flt_str, flt):
+            pass
+        # fallback match (handles EK658-9 vs EK6589)
+        elif macl_flt_str.replace("-", "") == flt:
+            pass
+        else:
             continue
 
+        # date check (safe)
         m_start, m_end = parse_eff_range(macl_eff)
 
         if m_start and r_start:
             if r_end < m_start or r_start > m_end:
                 continue
 
+        # --- WRITE (FORCE FILL) ---
         macl_ws.cell(r, 9).value  = airline
         macl_ws.cell(r, 10).value = day
         macl_ws.cell(r, 11).value = flt
@@ -219,7 +231,12 @@ for row in ramis_ws.iter_rows(min_row=2, max_col=6, values_only=True):
         macl_ws.cell(r, 13).value = std
         macl_ws.cell(r, 14).value = eff
 
+        matched = True
         break
+
+    # OPTIONAL DEBUG (can remove later)
+    if not matched:
+        print(f"NO MATCH → {airline} {flt} {day}")
 
 
 # ------------------------------------------------------------
