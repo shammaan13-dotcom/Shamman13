@@ -4,25 +4,26 @@
 # ==========================================================
 
 import pandas as pd
-from google.colab import files
 from openpyxl import Workbook
 from openpyxl.styles import Font
 
+def process(macl_df, ramis_df):
 
-# ----------------------------------------------------------
-# USER CONFIGURATION
-# ----------------------------------------------------------
+    # ------------------------------------------------
+    # USER CONFIGURATION
+    # ------------------------------------------------
 
-CONFIG = {
-    "SEASON_START": "2025-10-26",
-    "SEASON_END": "2026-03-28",
-    "ARR_START": "04:45:00",
-    "ARR_END": "15:31:00",
-    "DEP_START": "09:00:00",
-    "DEP_END": "23:59:00",
-    "LOOKBACK_DAYS": 1
-}
+    CONFIG = {
+        "SEASON_START": "2025-10-26",
+        "SEASON_END": "2026-03-28",
+        "ARR_START": "04:45:00",
+        "ARR_END": "15:36:00",
+        "DEP_START": "09:00:00",
+        "DEP_END": "23:59:00",
+        "LOOKBACK_DAYS": 1
+    }
 
+    # your full logic continues here (INDENTED)
 
 # ----------------------------------------------------------
 # AIRLINE MASTER
@@ -658,8 +659,10 @@ for day in weekday_order:
 
 output_file = "RAMIS_ROTATION_FINAL.xlsx"
 
-wb.save(output_file)
+from io import BytesIO
 
-print("File saved successfully")
+output = BytesIO()
+macl_wb.save(output)
+output.seek(0)
 
-files.download(output_file)
+return output
