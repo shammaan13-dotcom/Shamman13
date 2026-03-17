@@ -127,23 +127,6 @@ def normalize_day(day):
 # LOAD FILES (STREAMLIT SAFE)
 # ------------------------------------------------------------
 
-try:
-    ramis_wb = load_workbook(RAMIS_FILE, data_only=True)
-except Exception as e:
-    raise Exception(f"Error loading RAMIS file: {e}")
-
-try:
-    master_wb = load_workbook(MASTER_FILE)
-except Exception as e:
-    raise Exception(f"Error loading MASTER file: {e}")
-
-ramis_ws = ramis_wb.active
-target_ws = master_wb.active
-
-# ------------------------------------------------------------
-# GROUP DATA
-# ------------------------------------------------------------
-
 week_groups = defaultdict(list)
 
 for row in ramis_ws.iter_rows(min_row=2, max_col=6, values_only=True):
@@ -151,21 +134,23 @@ for row in ramis_ws.iter_rows(min_row=2, max_col=6, values_only=True):
     if not any(row):
         continue
 
-    weekday = normalize_day(row[1])
+    airline, day, flt, sta, std, eff = row
+
+    weekday = normalize_day(day)
     if not weekday:
         continue
 
-    airline, day, flt, sta, std, eff = row
+    validated = validate_flight(flt, sta, std)
 
-    new_flt, new_sta, new_std = validate_flight(flt, sta, std)
-
-    if not new_flt:
+    if validated[0] is None:
         continue
 
-    week_groups[weekday].append(
-        (airline, day, new_flt, new_sta, new_std, eff)
-    )
+    new_flt, new_sta, new_std = validated
 
+    week_groups[weekday].append((airline, day, new_flt, new_sta, new_std, eff))
+
+# 👇 ADD HERE
+print("TOTAL RECORDS:", sum(len(v) for v in week_groups.values()))
 
 # ------------------------------------------------------------
 # SORT
