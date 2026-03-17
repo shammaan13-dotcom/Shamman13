@@ -1,340 +1,166 @@
-# ============================================================
-# RAMIS PURPLE SIDE – PRODUCTION ENGINE
-# WITH TMA STA/STD VALIDATION + MIDNIGHT FIX
-# ============================================================
-
+import pandas as pd
 from openpyxl import load_workbook
 from openpyxl.styles import PatternFill, Font, Alignment
 from collections import defaultdict
 from datetime import datetime
-from google.colab import files
+from io import BytesIO
 
 
-# ------------------------------------------------------------
-# TMA TIME WINDOWS
-# ------------------------------------------------------------
+def process(macl_file, ramis_file):
 
-ARR_START = datetime.strptime("04:45","%H:%M").time()
-ARR_END   = datetime.strptime("15:45","%H:%M").time()
+    # -----------------------------
+    # LOAD FILES FROM STREAMLIT
+    # -----------------------------
+    ramis_wb = load_workbook(ramis_file, data_only=True)
+    master_wb = load_workbook(macl_file)
 
-DEP_START = datetime.strptime("09:00","%H:%M").time()
-DEP_END   = datetime.strptime("23:59","%H:%M").time()
+    ramis_ws = ramis_wb.active
+    target_ws = master_wb.active
 
+    # -----------------------------
+    # TIME WINDOWS
+    # -----------------------------
+    ARR_START = datetime.strptime("04:45","%H:%M").time()
+    ARR_END   = datetime.strptime("15:45","%H:%M").time()
 
-# ------------------------------------------------------------
-# TIME PARSER
-# ------------------------------------------------------------
+    DEP_START = datetime.strptime("09:00","%H:%M").time()
+    DEP_END   = datetime.strptime("23:59","%H:%M").time()
 
-def parse_time(t):
+    # -----------------------------
+    # HELPERS
+    # -----------------------------
+    def parse_time(t):
+        try:
+            return datetime.strptime(str(t), "%H:%M").time()
+        except:
+            return None
 
-    if t is None:
-        return None
+    def correct_midnight_std(std):
+        if std and (std.hour == 0 or std.hour == 1):
+            return datetime.strptime("23:59","%H:%M").time()
+        return std
 
-    t = str(t).strip()
+    def validate_flight(flt, sta, std):
 
-    if t == "" or t == "-":
-        return None
+        sta_t = parse_time(sta)
+        std_t = correct_midnight_std(parse_time(std))
 
-    try:
-        return datetime.strptime(t,"%H:%M").time()
-    except:
-        return None
+        arr_valid = sta_t and ARR_START <= sta_t <= ARR_END
+        dep_valid = std_t and DEP_START <= std_t <= DEP_END
 
+        if not arr_valid and not dep_valid:
+            return None, None, None
 
-# ------------------------------------------------------------
-# MIDNIGHT STD CORRECTION
-# ------------------------------------------------------------
-
-def correct_midnight_std(std):
-
-    if std is None:
-        return None
-
-    if std.hour == 0 or std.hour == 1:
-        return datetime.strptime("23:59","%H:%M").time()
-
-    return std
-
-
-# ------------------------------------------------------------
-# VALIDATION ENGINE
-# ------------------------------------------------------------
-
-def validate_flight(flt, sta, std):
-
-    sta_t = parse_time(sta)
-    std_t = parse_time(std)
-
-    std_t = correct_midnight_std(std_t)
-
-    arr_valid = False
-    dep_valid = False
-
-    if sta_t:
-        if ARR_START <= sta_t <= ARR_END:
-            arr_valid = True
-
-    if std_t:
-        if DEP_START <= std_t <= DEP_END:
-            dep_valid = True
-
-    if not arr_valid and not dep_valid:
-        return None,None,None
-
-    # ---------------------------
-    # ARR + DEP
-    # ---------------------------
-
-    if arr_valid and dep_valid:
-
-        if "-" not in flt:
-
-            if flt.endswith("D"):
-                base = flt[:-1]
-                flt_out = base + "-D"
-
+        if arr_valid and dep_valid:
+            if "-" not in flt:
+                flt_out = flt.replace("D","") + "-D"
             else:
-                flt_out = flt + "-D"
+                flt_out = flt
+            return flt_out, sta, std_t.strftime("%H:%M")
 
-        else:
-            flt_out = flt
+        if arr_valid:
+            return flt.replace("D",""), sta, ""
 
-        return flt_out, sta, std_t.strftime("%H:%M")
+        if dep_valid:
+            return flt, "", std_t.strftime("%H:%M")
 
-    # ---------------------------
-    # ARR ONLY
-    # ---------------------------
+    def normalize_day(day):
+        mapping = {
+            "MON":"MONDAY","TUE":"TUESDAY","WED":"WEDNESDAY",
+            "THU":"THURSDAY","FRI":"FRIDAY","SAT":"SATURDAY","SUN":"SUNDAY"
+        }
+        return mapping.get(str(day).strip().upper(), None)
 
-    if arr_valid and not dep_valid:
+    # -----------------------------
+    # GROUP DATA
+    # -----------------------------
+    week_groups = defaultdict(list)
 
-        if "-" in flt:
-            flt_out = flt.split("-")[0]
-        else:
-            flt_out = flt.replace("D","")
+    for row in ramis_ws.iter_rows(min_row=2, max_col=6, values_only=True):
 
-        return flt_out, sta, ""
+        if not any(row):
+            continue
 
-    # ---------------------------
-    # DEP ONLY
-    # ---------------------------
+        weekday = normalize_day(row[1])
+        if not weekday:
+            continue
 
-    if dep_valid and not arr_valid:
+        airline, day, flt, sta, std, eff = row
 
-        if "-" in flt:
-            dep = flt.split("-")[1]
-            flt_out = dep
-        else:
-            flt_out = flt
+        new_flt, new_sta, new_std = validate_flight(flt, sta, std)
 
-        return flt_out, "", std_t.strftime("%H:%M")
+        if new_flt is None:
+            continue
 
-
-# ------------------------------------------------------------
-# FILE UPLOAD
-# ------------------------------------------------------------
-
-print("Upload RAMIS Clean Sheet")
-ramis_upload = files.upload()
-ramis_file = list(ramis_upload.keys())[0]
-
-print("Upload MASTER MACL WINTER vs RAMIS file")
-master_upload = files.upload()
-master_file = list(master_upload.keys())[0]
-
-OUTPUT_FILE = "MASTER_MACL_WINTER_vs_RAMIS_UPDATED.xlsx"
-
-
-# ------------------------------------------------------------
-# LOAD FILES
-# ------------------------------------------------------------
-
-ramis_wb = load_workbook(ramis_file,data_only=True)
-master_wb = load_workbook(master_file)
-
-ramis_ws = ramis_wb.active
-target_ws = master_wb.active
-
-
-# ------------------------------------------------------------
-# STYLES
-# ------------------------------------------------------------
-
-purple_fill = PatternFill(start_color="D9CCE3",end_color="D9CCE3",fill_type="solid")
-header_font = Font(bold=True)
-center_align = Alignment(horizontal="center",vertical="center")
-
-
-# ------------------------------------------------------------
-# NORMALIZE DAY
-# ------------------------------------------------------------
-
-def normalize_day(day):
-
-    day = str(day).strip().upper()
-
-    mapping = {
-
-        "MON":"MONDAY","MONDAY":"MONDAY",
-        "TUE":"TUESDAY","TUESDAY":"TUESDAY",
-        "WED":"WEDNESDAY","WEDNESDAY":"WEDNESDAY",
-        "THU":"THURSDAY","THURSDAY":"THURSDAY",
-        "FRI":"FRIDAY","FRIDAY":"FRIDAY",
-        "SAT":"SATURDAY","SATURDAY":"SATURDAY",
-        "SUN":"SUNDAY","SUNDAY":"SUNDAY"
-    }
-
-    return mapping.get(day,None)
-
-
-# ------------------------------------------------------------
-# GROUP RAMIS DATA BY WEEKDAY
-# ------------------------------------------------------------
-
-week_groups = defaultdict(list)
-
-for row in ramis_ws.iter_rows(min_row=2,max_col=6,values_only=True):
-
-    if not any(row):
-        continue
-
-    weekday = normalize_day(row[1])
-
-    if not weekday:
-        continue
-
-    airline,day,flt,sta,std,eff = row
-
-    validated = validate_flight(flt,sta,std)
-
-    if validated[0] is None:
-        continue
-
-    new_flt,new_sta,new_std = validated
-
-    week_groups[weekday].append(
-
-        (
-            airline,
-            day,
-            new_flt,
-            new_sta,
-            new_std,
-            eff
+        week_groups[weekday].append(
+            (airline, day, new_flt, new_sta, new_std, eff)
         )
-    )
 
+    # -----------------------------
+    # SORT
+    # -----------------------------
+    for d in week_groups:
+        week_groups[d] = sorted(week_groups[d], key=lambda x: str(x[0]))
 
-# ------------------------------------------------------------
-# SORT BY AIRLINE
-# ------------------------------------------------------------
+    # -----------------------------
+    # STYLES
+    # -----------------------------
+    purple_fill = PatternFill(start_color="D9CCE3", end_color="D9CCE3", fill_type="solid")
+    header_font = Font(bold=True)
+    center = Alignment(horizontal="center", vertical="center")
 
-for day in week_groups:
+    # -----------------------------
+    # CLEAR OLD DATA
+    # -----------------------------
+    for row in range(3, target_ws.max_row + 1):
+        for col in range(9, 15):
+            target_ws.cell(row=row, column=col).value = None
 
-    week_groups[day] = sorted(
+    # -----------------------------
+    # WRITE DATA
+    # -----------------------------
+    WEEKDAYS = ["MONDAY","TUESDAY","WEDNESDAY","THURSDAY","FRIDAY","SATURDAY","SUNDAY"]
 
-        week_groups[day],
-        key=lambda x: str(x[0]).strip().upper()
-    )
+    current_row = 3
 
+    for day in WEEKDAYS:
 
-# ------------------------------------------------------------
-# CLEAR OLD PURPLE SECTION
-# ------------------------------------------------------------
+        if day not in week_groups:
+            continue
 
-for row in range(3,target_ws.max_row+1):
-
-    for col in range(9,15):
-
-        cell = target_ws.cell(row=row,column=col)
-
-        is_merged = False
-
-        for merged in target_ws.merged_cells.ranges:
-
-            if cell.coordinate in merged:
-                is_merged = True
-                break
-
-        if not is_merged:
-            cell.value = None
-
-
-# ------------------------------------------------------------
-# WEEKDAY ORDER
-# ------------------------------------------------------------
-
-WEEKDAYS = [
-
-    "MONDAY","TUESDAY","WEDNESDAY",
-    "THURSDAY","FRIDAY","SATURDAY","SUNDAY"
-]
-
-
-# ------------------------------------------------------------
-# WRITE PURPLE SECTION
-# ------------------------------------------------------------
-
-current_row = 3
-
-for index,day in enumerate(WEEKDAYS):
-
-    if day not in week_groups:
-        continue
-
-    if index == 0:
-
-        for record in week_groups[day]:
-
-            for offset,value in enumerate(record):
-
-                target_ws.cell(row=current_row,column=9+offset).value = value
-
-            current_row += 1
-
-    else:
-
-        current_row += 1
-
-        target_ws.cell(row=current_row,column=9).value = day
+        target_ws.cell(row=current_row, column=9).value = day
 
         for col in range(9,15):
-
-            cell = target_ws.cell(row=current_row,column=col)
-
-            cell.fill = purple_fill
-            cell.font = header_font
-            cell.alignment = center_align
+            c = target_ws.cell(row=current_row, column=col)
+            c.fill = purple_fill
+            c.font = header_font
+            c.alignment = center
 
         current_row += 1
 
         headers = ["AIRLINE","DAYS OF OPS","FLT NO","STA","STD","EFFECTIVE"]
 
-        for i,header in enumerate(headers):
-
-            cell = target_ws.cell(row=current_row,column=9+i)
-
-            cell.value = header
-            cell.fill = purple_fill
-            cell.font = header_font
-            cell.alignment = center_align
+        for i,h in enumerate(headers):
+            c = target_ws.cell(row=current_row, column=9+i)
+            c.value = h
+            c.fill = purple_fill
+            c.font = header_font
+            c.alignment = center
 
         current_row += 1
 
         for record in week_groups[day]:
-
-            for offset,value in enumerate(record):
-
-                target_ws.cell(row=current_row,column=9+offset).value = value
-
+            for i,val in enumerate(record):
+                target_ws.cell(row=current_row, column=9+i).value = val
             current_row += 1
 
+        current_row += 1
 
-# ------------------------------------------------------------
-# SAVE FILE
-# ------------------------------------------------------------
+    # -----------------------------
+    # RETURN FILE
+    # -----------------------------
+    output = BytesIO()
+    master_wb.save(output)
+    output.seek(0)
 
-master_wb.save(OUTPUT_FILE)
-
-files.download(OUTPUT_FILE)
-
-print("Purple section updated successfully.")
+    return output
