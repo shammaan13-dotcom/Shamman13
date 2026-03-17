@@ -12,7 +12,7 @@ import os
 # CONFIG
 # ----------------------------------------------------------
 
-INPUT_FILE = "input/connecting_flights.xlsx"
+INPUT_FILE = "connecting.xlsx"
 OUTPUT_FILE = "output/RAMIS_ROTATION_FINAL.xlsx"
 
 CONFIG = {
