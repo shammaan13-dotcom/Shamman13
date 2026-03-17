@@ -169,9 +169,13 @@ for r_idx, row in ramis_final.iterrows():
 
 
 # ----------------------------------------------------------
-# SAVE FILE
+# SAVE OUTPUT
 # ----------------------------------------------------------
 
+OUTPUT_FILE = "output/RAMIS_ROTATION_FINAL.xlsx"
+
+# Create output folder
+import os
 os.makedirs("output", exist_ok=True)
 
 wb.save(OUTPUT_FILE)
