@@ -1,5 +1,5 @@
 # ============================================================
-# RAMIS → MACL RECONCILIATION ENGINE (STREAMLIT SAFE VERSION)
+# RAMIS → MACL RECONCILIATION ENGINE (FINAL CORRECTED VERSION)
 # ============================================================
 
 from openpyxl import load_workbook
@@ -169,7 +169,7 @@ for r in range(3, macl_ws.max_row + 1):
 
 
 # ------------------------------------------------------------
-# MAIN MATCH LOOP (FIXED + RELIABLE WRITE)
+# MAIN MATCH LOOP (FINAL FIXED)
 # ------------------------------------------------------------
 
 for row in ramis_ws.iter_rows(min_row=2, max_col=6, values_only=True):
@@ -200,30 +200,28 @@ for row in ramis_ws.iter_rows(min_row=2, max_col=6, values_only=True):
         macl_air = str(macl_air).strip().upper()
         macl_flt_str = str(macl_flt).strip().upper()
 
-        # --- RELAXED MATCH (CRITICAL FIX) ---
+        # MATCH CONDITIONS
         if airline != macl_air:
             continue
 
         if day != macl_day:
             continue
 
-        # primary match
         if match_flight(macl_flt_str, flt):
             pass
-        # fallback match (handles EK658-9 vs EK6589)
         elif macl_flt_str.replace("-", "") == flt:
             pass
         else:
             continue
 
-        # date check (safe)
+        # DATE CHECK
         m_start, m_end = parse_eff_range(macl_eff)
 
         if m_start and r_start:
             if r_end < m_start or r_start > m_end:
                 continue
 
-        # --- WRITE (FORCE FILL) ---
+        # WRITE TO RAMIS SECTION (I–N)
         macl_ws.cell(r, 9).value  = airline
         macl_ws.cell(r, 10).value = day
         macl_ws.cell(r, 11).value = flt
@@ -234,7 +232,6 @@ for row in ramis_ws.iter_rows(min_row=2, max_col=6, values_only=True):
         matched = True
         break
 
-    # OPTIONAL DEBUG (can remove later)
     if not matched:
         print(f"NO MATCH → {airline} {flt} {day}")
 
