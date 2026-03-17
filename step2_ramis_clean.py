@@ -30,12 +30,11 @@ CONFIG = {
 # LOAD FILE
 # ----------------------------------------------------------
 
-if not os.path.exists(INPUT_FILE):
-    raise FileNotFoundError(f"Missing file: {INPUT_FILE}")
-
-df = pd.read_excel(INPUT_FILE, dtype=str)
-df.columns = df.columns.str.strip()
-
+try:
+    df = pd.read_excel(INPUT_FILE, dtype=str)
+    df.columns = df.columns.str.strip()
+except Exception as e:
+    raise Exception(f"Error reading file: {INPUT_FILE} | {e}")
 
 # ----------------------------------------------------------
 # CLEAN DATA
