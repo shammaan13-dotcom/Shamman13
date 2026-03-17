@@ -12,8 +12,8 @@ import os
 # CONFIG (EDIT THIS ONLY)
 # ------------------------------------------------------------
 
-RAMIS_FILE = "input/ramis.xlsx"
-MACL_FILE  = "input/macl_master.xlsx"
+RAMIS_FILE = "ramis.xlsx"
+MACL_FILE  = "macl_master.xlsx"
 OUTPUT_FILE = "output/MACL_RAMIS_MATCHED.xlsx"
 
 
