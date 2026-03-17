@@ -124,11 +124,18 @@ def normalize_day(day):
 
 
 # ------------------------------------------------------------
-# LOAD FILES
+# LOAD FILES (SAFE FOR STREAMLIT)
 # ------------------------------------------------------------
 
-ramis_wb = load_workbook(RAMIS_FILE, data_only=True)
-master_wb = load_workbook(MASTER_FILE)
+try:
+    ramis_wb = load_workbook(RAMIS_FILE, data_only=True)
+except Exception as e:
+    raise Exception(f"Error loading RAMIS file: {e}")
+
+try:
+    master_wb = load_workbook(MASTER_FILE)
+except Exception as e:
+    raise Exception(f"Error loading MASTER file: {e}")
 
 ramis_ws = ramis_wb.active
 target_ws = master_wb.active
