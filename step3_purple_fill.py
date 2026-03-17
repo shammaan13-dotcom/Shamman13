@@ -124,7 +124,7 @@ def normalize_day(day):
 
 
 # ------------------------------------------------------------
-# LOAD FILES (SAFE FOR STREAMLIT)
+# LOAD FILES (STREAMLIT SAFE)
 # ------------------------------------------------------------
 
 try:
@@ -139,7 +139,6 @@ except Exception as e:
 
 ramis_ws = ramis_wb.active
 target_ws = master_wb.active
-
 
 # ------------------------------------------------------------
 # GROUP DATA
@@ -212,8 +211,11 @@ for i, day in enumerate(WEEKDAYS):
 
 
 # ------------------------------------------------------------
-# SAVE
+# SAVE OUTPUT
 # ------------------------------------------------------------
+
+import os
+os.makedirs("output", exist_ok=True)
 
 master_wb.save(OUTPUT_FILE)
 
