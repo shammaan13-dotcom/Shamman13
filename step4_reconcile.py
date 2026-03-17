@@ -163,11 +163,15 @@ for i,r in out.iterrows():
 
 
 # ------------------------------------------------
-# EXPORT
+# EXPORT TO EXCEL
 # ------------------------------------------------
 
-out.to_excel(OUTPUT_FILE,index=False,header=False)
+OUTPUT_FILE = "output/FINAL_OUTPUT.xlsx"
 
+# Save dataframe first
+out.to_excel(OUTPUT_FILE, index=False, header=False)
+
+# Load again for formatting
 wb = load_workbook(OUTPUT_FILE)
 ws = wb.active
 
@@ -179,7 +183,6 @@ ws = wb.active
 ws.freeze_panes = "A3"
 
 for col in ws.columns:
-
     max_len = 0
     col_letter = get_column_letter(col[0].column)
 
@@ -191,17 +194,12 @@ for col in ws.columns:
 
 
 # ------------------------------------------------
-# SAVE OUTPUT
+# SAVE FINAL FILE
 # ------------------------------------------------
 
 import os
-
-OUTPUT_FILE = "output/FINAL_OUTPUT.xlsx"
-
-# Create output folder if not exists
 os.makedirs("output", exist_ok=True)
 
-# Save workbook
 wb.save(OUTPUT_FILE)
 
 print(f"✅ FINAL OUTPUT READY: {OUTPUT_FILE}")
