@@ -1,5 +1,5 @@
 # ============================================================
-# RAMIS → MACL RECONCILIATION ENGINE (LOCAL VERSION)
+# RAMIS → MACL RECONCILIATION ENGINE (STREAMLIT SAFE VERSION)
 # ============================================================
 
 from openpyxl import load_workbook
@@ -9,7 +9,7 @@ import os
 
 
 # ------------------------------------------------------------
-# CONFIG (EDIT THIS ONLY)
+# CONFIG
 # ------------------------------------------------------------
 
 RAMIS_FILE = "ramis.xlsx"
@@ -42,7 +42,7 @@ def normalize_day(day):
 
 
 # ------------------------------------------------------------
-# SPLIT FLIGHT PREFIX
+# SPLIT FLIGHT
 # ------------------------------------------------------------
 
 def split_flight(f):
@@ -61,21 +61,23 @@ def split_flight(f):
 
 
 # ------------------------------------------------------------
-# FLIGHT MATCH FUNCTION
+# MATCH FLIGHT
 # ------------------------------------------------------------
 
 def match_flight(macl, ramis):
 
-    macl = str(macl).strip().upper()
-    ramis = str(ramis).strip().upper()
+    macl = str(macl).strip().upper() if macl else ""
+    ramis = str(ramis).strip().upper() if ramis else ""
 
     if macl == ramis:
         return True
 
-    if "-" not in macl:
+    parts = macl.split("-")
+
+    if len(parts) != 2:
         return False
 
-    left, right = macl.split("-")
+    left, right = parts
 
     prefix, base, digits = split_flight(left)
     r_prefix, r_base, _ = split_flight(ramis)
@@ -111,22 +113,33 @@ def match_flight(macl, ramis):
 
 
 # ------------------------------------------------------------
-# PARSE EFFECTIVE DATE RANGE
+# PARSE EFFECTIVE DATE
 # ------------------------------------------------------------
 
 def parse_eff_range(eff):
 
     try:
-        s, e = [x.strip() for x in str(eff).split("-")]
-        s = datetime.strptime(s,"%d.%m.%y")
-        e = datetime.strptime(e,"%d.%m.%y")
+        if not eff:
+            return None, None
+
+        parts = str(eff).split("-")
+
+        if len(parts) != 2:
+            return None, None
+
+        s, e = parts
+
+        s = datetime.strptime(s.strip(), "%d.%m.%y")
+        e = datetime.strptime(e.strip(), "%d.%m.%y")
+
         return s, e
+
     except:
         return None, None
 
 
 # ------------------------------------------------------------
-# LOAD FILES (SAFE)
+# LOAD FILES
 # ------------------------------------------------------------
 
 try:
@@ -142,9 +155,11 @@ except Exception as e:
 ramis_ws = ramis_wb.active
 macl_ws = macl_wb.active
 
+print("✅ Files loaded successfully")
+
 
 # ------------------------------------------------------------
-# CLEAR RAMIS SECTION (COL I–N)
+# CLEAR RAMIS SECTION
 # ------------------------------------------------------------
 
 for r in range(3, macl_ws.max_row + 1):
@@ -165,7 +180,7 @@ for row in ramis_ws.iter_rows(min_row=2, max_col=6, values_only=True):
 
     airline = str(airline).strip().upper()
     day = normalize_day(day)
-    flt = str(flt).strip().upper()
+    flt = str(flt).strip().upper() if flt else ""
 
     r_start, r_end = parse_eff_range(eff)
 
@@ -210,7 +225,6 @@ for row in ramis_ws.iter_rows(min_row=2, max_col=6, values_only=True):
 # SAVE OUTPUT
 # ------------------------------------------------------------
 
-import os
 os.makedirs("output", exist_ok=True)
 
 macl_wb.save(OUTPUT_FILE)
