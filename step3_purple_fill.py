@@ -79,6 +79,10 @@ week_groups = defaultdict(list)
 # STEP 3 FINAL WORKING (DIRECT COPY → NO DEPENDENCY)
 # ------------------------------------------------------------
 
+# ------------------------------------------------------------
+# STEP 3 FINAL (NO INDENT ERROR)
+# ------------------------------------------------------------
+
 for r in range(3, ws.max_row + 1):
 
     airline = ws.cell(r, 1).value
@@ -86,7 +90,7 @@ for r in range(3, ws.max_row + 1):
     if not airline:
         continue
 
-    # COPY MACL → RAMIS SECTION (I–N)
+    # COPY MACL → RAMIS (I–N)
     ws.cell(r, 9).value  = ws.cell(r, 1).value
     ws.cell(r, 10).value = ws.cell(r, 2).value
     ws.cell(r, 11).value = ws.cell(r, 4).value
@@ -94,20 +98,7 @@ for r in range(3, ws.max_row + 1):
     ws.cell(r, 13).value = ws.cell(r, 6).value
     ws.cell(r, 14).value = ws.cell(r, 7).value
 
-print("STEP 3 COMPLETE — RAMIS FILLED")
-
-    if not airline:
-        continue
-
-    weekday = normalize_day(day)
-    if not weekday:
-        continue
-
-    week_groups[weekday].append((airline, day, flt, sta, std, eff))
-
-
-# DEBUG
-print("TOTAL RECORDS:", sum(len(v) for v in week_groups.values()))
+print("STEP 3 COMPLETE — FILLED")
 
 
 # ------------------------------------------------------------
