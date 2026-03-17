@@ -68,8 +68,13 @@ def normalize_day(day):
 # READ RAMIS FROM I–N
 # ------------------------------------------------------------
 
+# ------------------------------------------------------------
+# STEP 3 FINAL FIXED (STORE → CLEAR → WRITE)
+# ------------------------------------------------------------
+
 week_groups = defaultdict(list)
 
+# ✅ STEP 1: STORE DATA FIRST
 for r in range(3, ws.max_row + 1):
 
     airline = ws.cell(r, 9).value
@@ -88,52 +93,32 @@ for r in range(3, ws.max_row + 1):
 
     week_groups[weekday].append((airline, day, flt, sta, std, eff))
 
-
 print("TOTAL RECORDS:", sum(len(v) for v in week_groups.values()))
 
 
-# ------------------------------------------------------------
-# CLEAR OLD STRUCTURE
-# ------------------------------------------------------------
-
+# ❗ STEP 2: NOW CLEAR
 for r in range(3, ws.max_row + 1):
     for c in range(9, 15):
         ws.cell(r, c).value = None
 
 
-# ------------------------------------------------------------
-# WRITE PURPLE STRUCTURE
-# ------------------------------------------------------------
+# ✅ STEP 3: WRITE BACK
+row_ptr = 3
 
 WEEKDAYS = ["MONDAY","TUESDAY","WEDNESDAY","THURSDAY","FRIDAY","SATURDAY","SUNDAY"]
-
-row_ptr = 3
 
 for day in WEEKDAYS:
 
     if day not in week_groups:
         continue
 
-    # DAY HEADER
+    # HEADER
     ws.cell(row_ptr, 9).value = day
-
-    for c in range(9, 15):
-        cell = ws.cell(row_ptr, c)
-        cell.fill = purple_fill
-        cell.font = header_font
-        cell.alignment = center_align
-
     row_ptr += 1
 
-    # COLUMN HEADERS
     headers = ["AIRLINE","DAYS OF OPS","FLT NO","STA","STD","EFFECTIVE"]
-
     for i, h in enumerate(headers):
-        cell = ws.cell(row_ptr, 9+i)
-        cell.value = h
-        cell.fill = purple_fill
-        cell.font = header_font
-        cell.alignment = center_align
+        ws.cell(row_ptr, 9+i).value = h
 
     row_ptr += 1
 
