@@ -1,10 +1,10 @@
 # ============================================================
-# STEP 3 — READ RAMIS FROM SAME SHEET (I–N) AND FORMAT PURPLE
+# STEP 3 — RAMIS PURPLE FILL (FINAL WORKING VERSION)
 # ============================================================
 
 from openpyxl import load_workbook
-from openpyxl.styles import PatternFill, Font, Alignment
 from collections import defaultdict
+from datetime import datetime
 import os
 
 
@@ -12,33 +12,33 @@ import os
 # CONFIG
 # ------------------------------------------------------------
 
-MACL_FILE = os.getenv("MACL_FILE", "input/macl_master.xlsx")
-
-OUTPUT_FILE = os.getenv(
-    "OUTPUT_FILE",
-    os.path.join("output", "MASTER_MACL_WINTER_vs_RAMIS_UPDATED.xlsx")
-)
-
-os.makedirs("output", exist_ok=True)
+RAMIS_FILE  = "output/RAMIS_ROTATION_FINAL.xlsx"
+MASTER_FILE = "output/MACL_RAMIS_MATCHED.xlsx"
+OUTPUT_FILE = "output/MASTER_MACL_UPDATED.xlsx"
 
 
 # ------------------------------------------------------------
-# LOAD FILE
+# VALIDATE FILES
 # ------------------------------------------------------------
 
-wb = load_workbook(MACL_FILE)
-ws = wb.active
+if not os.path.exists(RAMIS_FILE):
+    raise FileNotFoundError(f"Missing RAMIS file: {RAMIS_FILE}")
 
-print("File loaded")
+if not os.path.exists(MASTER_FILE):
+    raise FileNotFoundError(f"Missing MASTER file: {MASTER_FILE}")
 
 
 # ------------------------------------------------------------
-# STYLES
+# LOAD FILES
 # ------------------------------------------------------------
 
-purple_fill = PatternFill(start_color="D9CCE3", end_color="D9CCE3", fill_type="solid")
-header_font = Font(bold=True)
-center_align = Alignment(horizontal="center", vertical="center")
+ramis_wb = load_workbook(RAMIS_FILE, data_only=True)
+master_wb = load_workbook(MASTER_FILE)
+
+ramis_ws = ramis_wb.active
+target_ws = master_wb.active
+
+print("FILES LOADED")
 
 
 # ------------------------------------------------------------
@@ -46,6 +46,7 @@ center_align = Alignment(horizontal="center", vertical="center")
 # ------------------------------------------------------------
 
 def normalize_day(day):
+
     if not day:
         return None
 
@@ -63,58 +64,47 @@ def normalize_day(day):
 
     return mapping.get(d)
 
-# ------------------------------------------------------------
-# STEP 3 FINAL FIXED (STORE → CLEAR → WRITE)
-# ------------------------------------------------------------
 
-from collections import defaultdict
+# ------------------------------------------------------------
+# GROUP RAMIS DATA
+# ------------------------------------------------------------
 
 week_groups = defaultdict(list)
 
-# ------------------------------------------------------------
-# STEP 1: STORE DATA FROM I–N
-# ------------------------------------------------------------
+for row in ramis_ws.iter_rows(min_row=2, max_col=6, values_only=True):
 
-# ------------------------------------------------------------
-# STEP 3 FINAL WORKING (DIRECT COPY → NO DEPENDENCY)
-# ------------------------------------------------------------
-
-# ------------------------------------------------------------
-# STEP 3 FINAL (NO INDENT ERROR)
-# ------------------------------------------------------------
-
-for r in range(3, ws.max_row + 1):
-
-    airline = ws.cell(r, 1).value
-
-    if not airline:
+    if not any(row):
         continue
 
-    # COPY MACL → RAMIS (I–N)
-    ws.cell(r, 9).value  = ws.cell(r, 1).value
-    ws.cell(r, 10).value = ws.cell(r, 2).value
-    ws.cell(r, 11).value = ws.cell(r, 4).value
-    ws.cell(r, 12).value = ws.cell(r, 5).value
-    ws.cell(r, 13).value = ws.cell(r, 6).value
-    ws.cell(r, 14).value = ws.cell(r, 7).value
+    airline, day, flt, sta, std, eff = row
 
-print("STEP 3 COMPLETE — FILLED")
+    weekday = normalize_day(day)
+
+    if not weekday:
+        continue
+
+    week_groups[weekday].append(
+        (airline, day, flt, sta, std, eff)
+    )
+
+
+print("TOTAL RAMIS RECORDS:", sum(len(v) for v in week_groups.values()))
 
 
 # ------------------------------------------------------------
-# STEP 2: CLEAR OLD DATA (I–N)
+# CLEAR OLD PURPLE SECTION (I–N)
 # ------------------------------------------------------------
 
-for r in range(3, ws.max_row + 1):
+for r in range(3, target_ws.max_row + 1):
     for c in range(9, 15):
-        ws.cell(r, c).value = None
+        target_ws.cell(r, c).value = None
 
 
 # ------------------------------------------------------------
-# STEP 3: WRITE BACK STRUCTURED DATA
+# WRITE RAMIS DATA INTO MASTER (I–N)
 # ------------------------------------------------------------
 
-row_ptr = 3
+current_row = 3
 
 WEEKDAYS = [
     "MONDAY","TUESDAY","WEDNESDAY",
@@ -126,31 +116,21 @@ for day in WEEKDAYS:
     if day not in week_groups:
         continue
 
-    # DAY HEADER
-    ws.cell(row_ptr, 9).value = day
-    row_ptr += 1
-
-    # COLUMN HEADERS
-    headers = ["AIRLINE","DAYS OF OPS","FLT NO","STA","STD","EFFECTIVE"]
-
-    for i, h in enumerate(headers):
-        ws.cell(row_ptr, 9+i).value = h
-
-    row_ptr += 1
-
-    # DATA ROWS
     for record in week_groups[day]:
-        for i, val in enumerate(record):
-            ws.cell(row_ptr, 9+i).value = val
-        row_ptr += 1
 
-    row_ptr += 1
+        for offset, val in enumerate(record):
+            target_ws.cell(current_row, 9 + offset).value = val
+
+        current_row += 1
 
 
 # ------------------------------------------------------------
-# SAVE
+# SAVE OUTPUT
 # ------------------------------------------------------------
 
-wb.save(OUTPUT_FILE)
+os.makedirs("output", exist_ok=True)
 
-print("STEP 3 COMPLETE — PURPLE FORMATTED")
+master_wb.save(OUTPUT_FILE)
+
+print("STEP 3 COMPLETE — PURPLE FILLED")
+print(f"OUTPUT: {OUTPUT_FILE}")
