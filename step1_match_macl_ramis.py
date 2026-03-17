@@ -9,10 +9,11 @@ import os
 
 
 # ------------------------------------------------------------
-# CONFIG
+# CONFIG (STREAMLIT SAFE)
 # ------------------------------------------------------------
 
-import os
+RAMIS_FILE = os.getenv("RAMIS_FILE", "input/ramis.xlsx")
+MACL_FILE  = os.getenv("MACL_FILE", "input/macl_master.xlsx")
 
 OUTPUT_FILE = os.getenv(
     "OUTPUT_FILE",
@@ -21,12 +22,12 @@ OUTPUT_FILE = os.getenv(
 
 os.makedirs("output", exist_ok=True)
 
+
 # ------------------------------------------------------------
 # NORMALIZE DAY
 # ------------------------------------------------------------
 
 def normalize_day(day):
-
     if not day:
         return None
 
@@ -50,9 +51,7 @@ def normalize_day(day):
 # ------------------------------------------------------------
 
 def split_flight(f):
-
     f = str(f).strip().upper()
-
     m = re.match(r"([A-Z0-9]+?)(\d+)$", f)
 
     if not m:
@@ -69,7 +68,6 @@ def split_flight(f):
 # ------------------------------------------------------------
 
 def match_flight(macl, ramis):
-
     macl = str(macl).strip().upper() if macl else ""
     ramis = str(ramis).strip().upper() if ramis else ""
 
@@ -121,7 +119,6 @@ def match_flight(macl, ramis):
 # ------------------------------------------------------------
 
 def parse_eff_range(eff):
-
     try:
         if not eff:
             return None, None
@@ -159,11 +156,11 @@ except Exception as e:
 ramis_ws = ramis_wb.active
 macl_ws = macl_wb.active
 
-print("✅ Files loaded successfully")
+print("Files loaded successfully")
 
 
 # ------------------------------------------------------------
-# CLEAR RAMIS SECTION
+# CLEAR RAMIS SECTION (COL 9–14)
 # ------------------------------------------------------------
 
 for r in range(3, macl_ws.max_row + 1):
@@ -184,16 +181,16 @@ for row in ramis_ws.iter_rows(min_row=2, max_col=6, values_only=True):
 
     airline = str(airline).strip().upper()
     day = normalize_day(day)
-    flt = str(flt).strip().upper() if flt else ""
+    flt = str(flt).strip().upper()
 
     r_start, r_end = parse_eff_range(eff)
 
     for r in range(3, macl_ws.max_row + 1):
 
-        macl_air = macl_ws.cell(r,1).value
-        macl_day = normalize_day(macl_ws.cell(r,2).value)
-        macl_flt = macl_ws.cell(r,4).value
-        macl_eff = macl_ws.cell(r,7).value
+        macl_air = macl_ws.cell(r, 1).value
+        macl_day = normalize_day(macl_ws.cell(r, 2).value)
+        macl_flt = macl_ws.cell(r, 4).value
+        macl_eff = macl_ws.cell(r, 7).value
 
         if not macl_air or not macl_flt:
             continue
@@ -215,12 +212,12 @@ for row in ramis_ws.iter_rows(min_row=2, max_col=6, values_only=True):
             if r_end < m_start or r_start > m_end:
                 continue
 
-        macl_ws.cell(r,9).value  = airline
-        macl_ws.cell(r,10).value = day
-        macl_ws.cell(r,11).value = flt
-        macl_ws.cell(r,12).value = sta
-        macl_ws.cell(r,13).value = std
-        macl_ws.cell(r,14).value = eff
+        macl_ws.cell(r, 9).value  = airline
+        macl_ws.cell(r, 10).value = day
+        macl_ws.cell(r, 11).value = flt
+        macl_ws.cell(r, 12).value = sta
+        macl_ws.cell(r, 13).value = std
+        macl_ws.cell(r, 14).value = eff
 
         break
 
@@ -229,8 +226,6 @@ for row in ramis_ws.iter_rows(min_row=2, max_col=6, values_only=True):
 # SAVE OUTPUT
 # ------------------------------------------------------------
 
-os.makedirs("output", exist_ok=True)
-
 macl_wb.save(OUTPUT_FILE)
 
-print(f"✅ STEP 1 COMPLETE: {OUTPUT_FILE}")
+print(f"STEP 1 COMPLETE: {OUTPUT_FILE}")
