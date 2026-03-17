@@ -64,7 +64,10 @@ if st.button("Run Process"):
                 st.success(f"{script_name} completed")
 
         # RUN STEPS
-        run_script("step_debug_extract.py")
+        run_script("step1_match_macl_ramis.py")
+        run_script("step2_ramis_clean.py")
+        run_script("step3_purple_fill.py")
+        run_script("step4_reconcile.py")
 
         # DOWNLOAD OUTPUT
         output_file = "output/FINAL_OUTPUT.xlsx"
