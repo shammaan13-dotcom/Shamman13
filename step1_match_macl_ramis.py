@@ -12,9 +12,11 @@ import os
 # CONFIG
 # ------------------------------------------------------------
 
-RAMIS_FILE = "ramis.xlsx"
-MACL_FILE  = "macl_master.xlsx"
-OUTPUT_FILE = "output/MACL_RAMIS_MATCHED.xlsx"
+import os
+
+RAMIS_FILE = os.getenv("RAMIS_FILE", "ramis.xlsx")
+MACL_FILE  = os.getenv("MACL_FILE", "macl_master.xlsx")
+CONNECT_FILE = os.getenv("CONNECT_FILE", "connecting.xlsx")
 
 
 # ------------------------------------------------------------
