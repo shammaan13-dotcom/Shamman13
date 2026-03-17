@@ -63,18 +63,18 @@ def normalize_day(day):
 
     return mapping.get(d)
 
-
-# ------------------------------------------------------------
-# READ RAMIS FROM I–N
-# ------------------------------------------------------------
-
 # ------------------------------------------------------------
 # STEP 3 FINAL FIXED (STORE → CLEAR → WRITE)
 # ------------------------------------------------------------
 
+from collections import defaultdict
+
 week_groups = defaultdict(list)
 
-# ✅ STEP 1: STORE DATA FIRST
+# ------------------------------------------------------------
+# STEP 1: STORE DATA FROM I–N
+# ------------------------------------------------------------
+
 for r in range(3, ws.max_row + 1):
 
     airline = ws.cell(r, 9).value
@@ -93,36 +93,49 @@ for r in range(3, ws.max_row + 1):
 
     week_groups[weekday].append((airline, day, flt, sta, std, eff))
 
+
+# DEBUG
 print("TOTAL RECORDS:", sum(len(v) for v in week_groups.values()))
 
 
-# ❗ STEP 2: NOW CLEAR
+# ------------------------------------------------------------
+# STEP 2: CLEAR OLD DATA (I–N)
+# ------------------------------------------------------------
+
 for r in range(3, ws.max_row + 1):
     for c in range(9, 15):
         ws.cell(r, c).value = None
 
 
-# ✅ STEP 3: WRITE BACK
+# ------------------------------------------------------------
+# STEP 3: WRITE BACK STRUCTURED DATA
+# ------------------------------------------------------------
+
 row_ptr = 3
 
-WEEKDAYS = ["MONDAY","TUESDAY","WEDNESDAY","THURSDAY","FRIDAY","SATURDAY","SUNDAY"]
+WEEKDAYS = [
+    "MONDAY","TUESDAY","WEDNESDAY",
+    "THURSDAY","FRIDAY","SATURDAY","SUNDAY"
+]
 
 for day in WEEKDAYS:
 
     if day not in week_groups:
         continue
 
-    # HEADER
+    # DAY HEADER
     ws.cell(row_ptr, 9).value = day
     row_ptr += 1
 
+    # COLUMN HEADERS
     headers = ["AIRLINE","DAYS OF OPS","FLT NO","STA","STD","EFFECTIVE"]
+
     for i, h in enumerate(headers):
         ws.cell(row_ptr, 9+i).value = h
 
     row_ptr += 1
 
-    # DATA
+    # DATA ROWS
     for record in week_groups[day]:
         for i, val in enumerate(record):
             ws.cell(row_ptr, 9+i).value = val
