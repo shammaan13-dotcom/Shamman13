@@ -214,7 +214,11 @@ for row in ramis_ws.iter_rows(min_row=2, max_col=6, values_only=True):
 # ------------------------------------------------------------
 
 output_file = "MACL_RAMIS_MATCHED.xlsx"
+from io import BytesIO
 
-macl_wb.save(output_file)
+output = BytesIO()
+macl_wb.save(output)
+output.seek(0)
 
-files.download(output_file)
+return output
+
