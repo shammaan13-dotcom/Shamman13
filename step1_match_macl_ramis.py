@@ -146,10 +146,14 @@ for row in ramis_ws.iter_rows(min_row=2, max_col=6, values_only=True):
     if not weekday:
         continue
 
-    validated = validate_flight(flt, sta, std)
-    if validated[0] is None:
-        continue
+validated = validate_flight(flt, sta, std)
 
+# fallback if validation fails
+if validated[0] is None:
+    new_flt = flt
+    new_sta = sta
+    new_std = std
+else:
     new_flt, new_sta, new_std = validated
 
     week_groups[weekday].append((airline, day, new_flt, new_sta, new_std, eff))
