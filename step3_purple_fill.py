@@ -75,14 +75,26 @@ week_groups = defaultdict(list)
 # STEP 1: STORE DATA FROM I–N
 # ------------------------------------------------------------
 
+# ------------------------------------------------------------
+# STEP 3 FINAL WORKING (DIRECT COPY → NO DEPENDENCY)
+# ------------------------------------------------------------
+
 for r in range(3, ws.max_row + 1):
 
-    airline = ws.cell(r, 9).value
-    day     = ws.cell(r, 10).value
-    flt     = ws.cell(r, 11).value
-    sta     = ws.cell(r, 12).value
-    std     = ws.cell(r, 13).value
-    eff     = ws.cell(r, 14).value
+    airline = ws.cell(r, 1).value
+
+    if not airline:
+        continue
+
+    # COPY MACL → RAMIS SECTION (I–N)
+    ws.cell(r, 9).value  = ws.cell(r, 1).value
+    ws.cell(r, 10).value = ws.cell(r, 2).value
+    ws.cell(r, 11).value = ws.cell(r, 4).value
+    ws.cell(r, 12).value = ws.cell(r, 5).value
+    ws.cell(r, 13).value = ws.cell(r, 6).value
+    ws.cell(r, 14).value = ws.cell(r, 7).value
+
+print("STEP 3 COMPLETE — RAMIS FILLED")
 
     if not airline:
         continue
