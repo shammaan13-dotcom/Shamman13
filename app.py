@@ -1,26 +1,26 @@
 import streamlit as st
-import pandas as pd
-from io import BytesIO
+import match_script
+import purple_script
 
-st.title("MACL / RAMIS Schedule Processing Tool")
+st.title("MACL / RAMIS Processing Tool")
 
-st.write("Upload your Excel file to generate the clean sheet.")
+macl_file = st.file_uploader("Upload MASTER MACL File", type=["xlsx"])
+ramis_file = st.file_uploader("Upload RAMIS File", type=["xlsx"])
 
-uploaded_file = st.file_uploader("Upload Excel File", type=["xlsx"])
+if macl_file and ramis_file:
 
-if uploaded_file is not None:
+    st.write("Processing...")
 
-    df = pd.read_excel(uploaded_file)
+    # STEP 1 → MATCH
+    step1_output = match_script.process(macl_file, ramis_file)
 
-    # YOUR LOGIC WILL GO HERE
-    result = df.copy()
+    # STEP 2 → PURPLE UPDATE
+    final_output = purple_script.process(step1_output, ramis_file)
 
-    output = BytesIO()
-    result.to_excel(output, index=False)
-    output.seek(0)
+    st.success("Completed")
 
     st.download_button(
-        label="Download Output File",
-        data=output,
-        file_name="clean_sheet_output.xlsx"
+        label="Download Final Updated File",
+        data=final_output,
+        file_name="FINAL_MACL_OUTPUT.xlsx"
     )
