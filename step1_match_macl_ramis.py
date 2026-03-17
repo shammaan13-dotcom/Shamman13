@@ -14,10 +14,12 @@ import os
 
 import os
 
-RAMIS_FILE = os.getenv("RAMIS_FILE", "ramis.xlsx")
-MACL_FILE  = os.getenv("MACL_FILE", "macl_master.xlsx")
-CONNECT_FILE = os.getenv("CONNECT_FILE", "connecting.xlsx")
+OUTPUT_FILE = os.getenv(
+    "OUTPUT_FILE",
+    os.path.join("output", "MACL_RAMIS_MATCHED.xlsx")
+)
 
+os.makedirs("output", exist_ok=True)
 
 # ------------------------------------------------------------
 # NORMALIZE DAY
