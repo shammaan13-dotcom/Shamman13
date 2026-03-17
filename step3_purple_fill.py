@@ -22,11 +22,15 @@ OUTPUT_FILE = "output/MASTER_MACL_UPDATED.xlsx"
 # VALIDATE FILES
 # ------------------------------------------------------------
 
-if not os.path.exists(RAMIS_FILE):
-    raise FileNotFoundError(f"Missing: {RAMIS_FILE}")
+try:
+    ramis_wb = load_workbook(RAMIS_FILE, data_only=True)
+except Exception as e:
+    raise Exception(f"Error loading RAMIS file: {e}")
 
-if not os.path.exists(MASTER_FILE):
-    raise FileNotFoundError(f"Missing: {MASTER_FILE}")
+try:
+    master_wb = load_workbook(MASTER_FILE)
+except Exception as e:
+    raise Exception(f"Error loading MASTER file: {e}")
 
 
 # ------------------------------------------------------------
