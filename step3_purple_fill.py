@@ -1,11 +1,10 @@
 # ============================================================
-# STEP 3 — RAMIS PURPLE FILL (FINAL STABLE VERSION)
+# STEP 3 — READ RAMIS FROM SAME SHEET (I–N) AND FORMAT PURPLE
 # ============================================================
 
 from openpyxl import load_workbook
 from openpyxl.styles import PatternFill, Font, Alignment
 from collections import defaultdict
-from datetime import datetime
 import os
 
 
@@ -13,8 +12,7 @@ import os
 # CONFIG
 # ------------------------------------------------------------
 
-RAMIS_FILE = os.getenv("RAMIS_FILE", "input/ramis.xlsx")
-MACL_FILE  = os.getenv("MACL_FILE", "input/macl_master.xlsx")
+MACL_FILE = os.getenv("MACL_FILE", "input/macl_master.xlsx")
 
 OUTPUT_FILE = os.getenv(
     "OUTPUT_FILE",
@@ -25,16 +23,13 @@ os.makedirs("output", exist_ok=True)
 
 
 # ------------------------------------------------------------
-# LOAD FILES
+# LOAD FILE
 # ------------------------------------------------------------
 
-ramis_wb = load_workbook(RAMIS_FILE, data_only=True)
-master_wb = load_workbook(MACL_FILE)
+wb = load_workbook(MACL_FILE)
+ws = wb.active
 
-ramis_ws = ramis_wb.active
-target_ws = master_wb.active
-
-print("Files loaded successfully")
+print("File loaded")
 
 
 # ------------------------------------------------------------
@@ -70,49 +65,44 @@ def normalize_day(day):
 
 
 # ------------------------------------------------------------
-# GROUP RAMIS DATA (NO VALIDATION DROP)
+# READ RAMIS FROM I–N
 # ------------------------------------------------------------
 
 week_groups = defaultdict(list)
 
-for row in ramis_ws.iter_rows(min_row=2, max_col=6, values_only=True):
+for r in range(3, ws.max_row + 1):
 
-    if not any(row):
+    airline = ws.cell(r, 9).value
+    day     = ws.cell(r, 10).value
+    flt     = ws.cell(r, 11).value
+    sta     = ws.cell(r, 12).value
+    std     = ws.cell(r, 13).value
+    eff     = ws.cell(r, 14).value
+
+    if not airline:
         continue
-
-    airline, day, flt, sta, std, eff = row
 
     weekday = normalize_day(day)
     if not weekday:
         continue
 
-    # ✅ NO VALIDATION DROP — ALWAYS KEEP DATA
     week_groups[weekday].append((airline, day, flt, sta, std, eff))
 
 
-# DEBUG
 print("TOTAL RECORDS:", sum(len(v) for v in week_groups.values()))
 
 
 # ------------------------------------------------------------
-# SORT DATA
+# CLEAR OLD STRUCTURE
 # ------------------------------------------------------------
 
-for d in week_groups:
-    week_groups[d] = sorted(week_groups[d], key=lambda x: str(x[0]).upper())
-
-
-# ------------------------------------------------------------
-# CLEAR OLD PURPLE SECTION (I–N)
-# ------------------------------------------------------------
-
-for r in range(3, target_ws.max_row + 1):
+for r in range(3, ws.max_row + 1):
     for c in range(9, 15):
-        target_ws.cell(row=r, column=c).value = None
+        ws.cell(r, c).value = None
 
 
 # ------------------------------------------------------------
-# WRITE PURPLE SECTION
+# WRITE PURPLE STRUCTURE
 # ------------------------------------------------------------
 
 WEEKDAYS = ["MONDAY","TUESDAY","WEDNESDAY","THURSDAY","FRIDAY","SATURDAY","SUNDAY"]
@@ -124,22 +114,22 @@ for day in WEEKDAYS:
     if day not in week_groups:
         continue
 
-    # Day Header
-    target_ws.cell(row=row_ptr, column=9).value = day
+    # DAY HEADER
+    ws.cell(row_ptr, 9).value = day
 
     for c in range(9, 15):
-        cell = target_ws.cell(row=row_ptr, column=c)
+        cell = ws.cell(row_ptr, c)
         cell.fill = purple_fill
         cell.font = header_font
         cell.alignment = center_align
 
     row_ptr += 1
 
-    # Column Headers
+    # COLUMN HEADERS
     headers = ["AIRLINE","DAYS OF OPS","FLT NO","STA","STD","EFFECTIVE"]
 
     for i, h in enumerate(headers):
-        cell = target_ws.cell(row=row_ptr, column=9+i)
+        cell = ws.cell(row_ptr, 9+i)
         cell.value = h
         cell.fill = purple_fill
         cell.font = header_font
@@ -147,19 +137,19 @@ for day in WEEKDAYS:
 
     row_ptr += 1
 
-    # Data Rows
+    # DATA
     for record in week_groups[day]:
         for i, val in enumerate(record):
-            target_ws.cell(row=row_ptr, column=9+i).value = val
+            ws.cell(row_ptr, 9+i).value = val
         row_ptr += 1
 
     row_ptr += 1
 
 
 # ------------------------------------------------------------
-# SAVE OUTPUT
+# SAVE
 # ------------------------------------------------------------
 
-master_wb.save(OUTPUT_FILE)
+wb.save(OUTPUT_FILE)
 
-print("STEP 3 COMPLETE — PURPLE FILLED")
+print("STEP 3 COMPLETE — PURPLE FORMATTED")
