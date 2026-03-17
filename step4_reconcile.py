@@ -191,9 +191,17 @@ for col in ws.columns:
 
 
 # ------------------------------------------------
-# SAVE
+# SAVE OUTPUT
 # ------------------------------------------------
 
+import os
+
+OUTPUT_FILE = "output/FINAL_OUTPUT.xlsx"
+
+# Create output folder if not exists
+os.makedirs("output", exist_ok=True)
+
+# Save workbook
 wb.save(OUTPUT_FILE)
 
 print(f"✅ FINAL OUTPUT READY: {OUTPUT_FILE}")
