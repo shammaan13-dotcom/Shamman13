@@ -1,5 +1,5 @@
 # ==========================================================
-# RAMIS CLEAN SHEET FINAL ROTATION ENGINE (STREAMLIT SAFE)
+# RAMIS CLEAN SHEET FINAL ROTATION ENGINE (FINAL VERSION)
 # ==========================================================
 
 import pandas as pd
@@ -9,7 +9,7 @@ import os
 
 
 # ----------------------------------------------------------
-# CONFIG (FIXED PATH)
+# CONFIG (MATCHES STREAMLIT SAVE PATH)
 # ----------------------------------------------------------
 
 INPUT_FILE = "input/connecting_flights.xlsx"
@@ -22,11 +22,16 @@ CONFIG = {
 
 
 # ----------------------------------------------------------
-# LOAD FILE
+# VALIDATE INPUT FILE
 # ----------------------------------------------------------
 
 if not os.path.exists(INPUT_FILE):
     raise FileNotFoundError(f"Missing file: {INPUT_FILE}")
+
+
+# ----------------------------------------------------------
+# LOAD FILE
+# ----------------------------------------------------------
 
 df = pd.read_excel(INPUT_FILE, dtype=str)
 df.columns = df.columns.str.strip()
@@ -97,7 +102,7 @@ def build_flight_id(arr_id, dep_id):
 
 
 # ----------------------------------------------------------
-# MATCHING ENGINE
+# MATCHING ENGINE (ARR + DEP PAIRING)
 # ----------------------------------------------------------
 
 output_rows = []
@@ -114,6 +119,9 @@ for (prefix, day), group in df.groupby(["Prefix", "Scheduled Day"]):
 
         for _, dep in departures.iterrows():
 
+            if pd.isna(arr["Scheduled Time"]) or pd.isna(dep["Scheduled Time"]):
+                continue
+
             if dep["Scheduled Time"] <= arr["Scheduled Time"]:
                 continue
 
@@ -127,8 +135,8 @@ for (prefix, day), group in df.groupby(["Prefix", "Scheduled Day"]):
                 "AIRLINE": prefix,
                 "DAYS OF OPS": day,
                 "FLT NO": build_flight_id(arr["Flight ID"], dep["Flight ID"]),
-                "STA": arr["Scheduled Time"].strftime("%H:%M") if pd.notna(arr["Scheduled Time"]) else "",
-                "STD": dep["Scheduled Time"].strftime("%H:%M") if pd.notna(dep["Scheduled Time"]) else "",
+                "STA": arr["Scheduled Time"].strftime("%H:%M"),
+                "STD": dep["Scheduled Time"].strftime("%H:%M"),
                 "EFFECTIVE": arr["Start Date"].strftime("%d.%m.%y") + " - " + arr["End Date"].strftime("%d.%m.%y")
             })
 
@@ -166,4 +174,4 @@ os.makedirs("output", exist_ok=True)
 wb.save(OUTPUT_FILE)
 
 print("STEP 2 COMPLETE")
-print(f"OUTPUT FILE: {OUTPUT_FILE}")
+print("OUTPUT FILE:", OUTPUT_FILE)
