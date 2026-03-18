@@ -1,5 +1,5 @@
 # ==========================================================
-# RAMIS CLEAN SHEET FINAL ROTATION ENGINE (LOCAL VERSION)
+# RAMIS CLEAN SHEET FINAL ROTATION ENGINE (STREAMLIT SAFE)
 # ==========================================================
 
 import pandas as pd
@@ -9,20 +9,15 @@ import os
 
 
 # ----------------------------------------------------------
-# CONFIG
+# CONFIG (FIXED PATH)
 # ----------------------------------------------------------
 
-INPUT_FILE = "connecting.xlsx"
+INPUT_FILE = "input/connecting_flights.xlsx"
 OUTPUT_FILE = "output/RAMIS_ROTATION_FINAL.xlsx"
 
 CONFIG = {
     "SEASON_START": "2025-10-26",
-    "SEASON_END": "2026-03-28",
-    "ARR_START": "04:45:00",
-    "ARR_END": "15:31:00",
-    "DEP_START": "09:00:00",
-    "DEP_END": "23:59:00",
-    "LOOKBACK_DAYS": 7
+    "SEASON_END": "2026-03-28"
 }
 
 
@@ -30,11 +25,15 @@ CONFIG = {
 # LOAD FILE
 # ----------------------------------------------------------
 
-try:
-    df = pd.read_excel(INPUT_FILE, dtype=str)
-    df.columns = df.columns.str.strip()
-except Exception as e:
-    raise Exception(f"Error reading file: {INPUT_FILE} | {e}")
+if not os.path.exists(INPUT_FILE):
+    raise FileNotFoundError(f"Missing file: {INPUT_FILE}")
+
+df = pd.read_excel(INPUT_FILE, dtype=str)
+df.columns = df.columns.str.strip()
+
+print("FILE LOADED:", INPUT_FILE)
+print("TOTAL INPUT ROWS:", len(df))
+
 
 # ----------------------------------------------------------
 # CLEAN DATA
@@ -43,8 +42,8 @@ except Exception as e:
 df = df.dropna(subset=["Flight ID"])
 
 exclude_list = [
-"ARRTBA","DEPTBA","RESARR","RESDEP",
-"MLE","MLED","DMLE","DMLED"
+    "ARRTBA","DEPTBA","RESARR","RESDEP",
+    "MLE","MLED","DMLE","DMLED"
 ]
 
 df = df[~df["Flight ID"].str.upper().isin(exclude_list)].copy()
@@ -71,12 +70,14 @@ df["Prefix"] = df["Flight ID"].str[:2]
 # ----------------------------------------------------------
 
 SEASON_START = pd.to_datetime(CONFIG["SEASON_START"])
-SEASON_END = pd.to_datetime(CONFIG["SEASON_END"])
+SEASON_END   = pd.to_datetime(CONFIG["SEASON_END"])
 
 df = df[
     (df["Start Date"] <= SEASON_END) &
     (df["End Date"] >= SEASON_START)
 ].copy()
+
+print("AFTER FILTER:", len(df))
 
 
 # ----------------------------------------------------------
@@ -85,9 +86,9 @@ df = df[
 
 def build_flight_id(arr_id, dep_id):
 
-    arr_prefix=''.join(filter(str.isalpha,arr_id))
-    arr_num=arr_id.replace(arr_prefix,"")
-    dep_num=dep_id.replace(arr_prefix,"")
+    arr_prefix = ''.join(filter(str.isalpha, arr_id))
+    arr_num = arr_id.replace(arr_prefix, "")
+    dep_num = dep_id.replace(arr_prefix, "")
 
     if dep_id.startswith(arr_id):
         return f"{arr_id}-{dep_id[len(arr_id):]}"
@@ -100,15 +101,14 @@ def build_flight_id(arr_id, dep_id):
 # ----------------------------------------------------------
 
 output_rows = []
-used_flights = set()
 
-for (prefix, day), group in df.groupby(["Prefix","Scheduled Day"]):
+for (prefix, day), group in df.groupby(["Prefix", "Scheduled Day"]):
 
-    arrivals = group[group["Type"]=="ARRIVAL"].copy()
-    departures = group[group["Type"]=="DEPARTURE"].copy()
+    arrivals = group[group["Type"] == "ARRIVAL"].copy()
+    departures = group[group["Type"] == "DEPARTURE"].copy()
 
-    arrivals = arrivals.sort_values(["Start Date","Scheduled Time"])
-    departures = departures.sort_values(["Start Date","Scheduled Time"])
+    arrivals = arrivals.sort_values(["Start Date", "Scheduled Time"])
+    departures = departures.sort_values(["Start Date", "Scheduled Time"])
 
     for _, arr in arrivals.iterrows():
 
@@ -126,26 +126,16 @@ for (prefix, day), group in df.groupby(["Prefix","Scheduled Day"]):
             output_rows.append({
                 "AIRLINE": prefix,
                 "DAYS OF OPS": day,
-                "FLT NO": build_flight_id(arr["Flight ID"],dep["Flight ID"]),
-                "STA": arr["Scheduled Time"].strftime("%H:%M"),
-                "STD": dep["Scheduled Time"].strftime("%H:%M"),
-                "EFFECTIVE": arr["Start Date"].strftime("%d.%m.%y")
-                + " - " +
-                arr["End Date"].strftime("%d.%m.%y")
+                "FLT NO": build_flight_id(arr["Flight ID"], dep["Flight ID"]),
+                "STA": arr["Scheduled Time"].strftime("%H:%M") if pd.notna(arr["Scheduled Time"]) else "",
+                "STD": dep["Scheduled Time"].strftime("%H:%M") if pd.notna(dep["Scheduled Time"]) else "",
+                "EFFECTIVE": arr["Start Date"].strftime("%d.%m.%y") + " - " + arr["End Date"].strftime("%d.%m.%y")
             })
 
-            used_flights.add(arr["Flight ID"])
-            used_flights.add(dep["Flight ID"])
             break
 
 
-# ----------------------------------------------------------
-# FINAL DF
-# ----------------------------------------------------------
-
-ramis_final = pd.DataFrame(output_rows)
-
-ramis_final = ramis_final.drop_duplicates().reset_index(drop=True)
+print("TOTAL RAMIS RECORDS:", len(output_rows))
 
 
 # ----------------------------------------------------------
@@ -158,25 +148,22 @@ ws.title = "RAMIS CLEAN SHEET"
 
 headers = ["AIRLINE","DAYS OF OPS","FLT NO","STA","STD","EFFECTIVE"]
 
-for col,header in enumerate(headers,start=1):
-    ws.cell(row=1,column=col).value = header
-    ws.cell(row=1,column=col).font = Font(bold=True)
+for col, header in enumerate(headers, start=1):
+    ws.cell(row=1, column=col).value = header
+    ws.cell(row=1, column=col).font = Font(bold=True)
 
-for r_idx, row in ramis_final.iterrows():
-    for c_idx, val in enumerate(row, start=1):
-        ws.cell(row=r_idx+2, column=c_idx).value = val
+for r_idx, row in enumerate(output_rows):
+    for c_idx, val in enumerate(row.values(), start=1):
+        ws.cell(row=r_idx + 2, column=c_idx).value = val
 
 
 # ----------------------------------------------------------
 # SAVE OUTPUT
 # ----------------------------------------------------------
 
-OUTPUT_FILE = "output/RAMIS_ROTATION_FINAL.xlsx"
-
-# Create output folder
-import os
 os.makedirs("output", exist_ok=True)
 
 wb.save(OUTPUT_FILE)
 
-print(f"✅ RAMIS clean file saved: {OUTPUT_FILE}")
+print("STEP 2 COMPLETE")
+print(f"OUTPUT FILE: {OUTPUT_FILE}")
