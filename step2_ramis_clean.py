@@ -9,10 +9,10 @@ import os
 
 
 # ----------------------------------------------------------
-# CONFIG (MATCHES STREAMLIT SAVE PATH)
+# CONFIG (USE ENV VARIABLES FROM STREAMLIT)
 # ----------------------------------------------------------
 
-INPUT_FILE = "input/connecting.xlsx"
+INPUT_FILE = os.environ.get("CONNECT_FILE") or "input/connecting_flights.xlsx"
 OUTPUT_FILE = "output/RAMIS_ROTATION_FINAL.xlsx"
 
 CONFIG = {
@@ -25,7 +25,7 @@ CONFIG = {
 # VALIDATE INPUT FILE
 # ----------------------------------------------------------
 
-if not os.path.exists(INPUT_FILE):
+if not INPUT_FILE or not os.path.exists(INPUT_FILE):
     raise FileNotFoundError(f"Missing file: {INPUT_FILE}")
 
 
@@ -59,6 +59,7 @@ df["Type"] = df["Type"].str.strip().str.upper()
 df["Start Date"] = pd.to_datetime(df["Start Date"], errors="coerce")
 df["End Date"] = pd.to_datetime(df["End Date"], errors="coerce")
 
+# CLEAN TIME FORMAT
 df["Scheduled Time"] = df["Scheduled Time"].astype(str).str.split(".").str[0]
 
 df["Scheduled Time"] = pd.to_datetime(
@@ -67,6 +68,7 @@ df["Scheduled Time"] = pd.to_datetime(
     errors="coerce"
 )
 
+# AIRLINE PREFIX (FIRST 2 CHARACTERS - LETTER OR NUMBER)
 df["Prefix"] = df["Flight ID"].str[:2]
 
 
@@ -95,6 +97,12 @@ def build_flight_id(arr_id, dep_id):
     arr_num = arr_id.replace(arr_prefix, "")
     dep_num = dep_id.replace(arr_prefix, "")
 
+    # CASE: 6E1133 + 6E1133-4 → 6E1134
+    if "-" in dep_id:
+        base, suffix = dep_id.split("-")
+        return f"{arr_prefix}{suffix}"
+
+    # CASE: same base
     if dep_id.startswith(arr_id):
         return f"{arr_id}-{dep_id[len(arr_id):]}"
 
