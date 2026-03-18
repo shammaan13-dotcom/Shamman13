@@ -115,7 +115,7 @@ def build_flight_id(arr_id, dep_id):
 
 output_rows = []
 
-for (prefix, day), group in df.groupby(["Prefix", "Scheduled Day"]):
+for prefix, group in df.groupby(["Prefix"]):
 
     arrivals = group[group["Type"] == "ARRIVAL"].copy()
     departures = group[group["Type"] == "DEPARTURE"].copy()
@@ -126,18 +126,21 @@ for (prefix, day), group in df.groupby(["Prefix", "Scheduled Day"]):
     for _, arr in arrivals.iterrows():
 
         for _, dep in departures.iterrows():
-
-            if pd.isna(arr["Scheduled Time"]) or pd.isna(dep["Scheduled Time"]):
-                continue
-
-            if dep["Scheduled Time"] <= arr["Scheduled Time"]:
-                continue
-
-            if arr["Start Date"] != dep["Start Date"]:
-                continue
-
-            if arr["End Date"] != dep["End Date"]:
-                continue
+            
+        # --- STA / STD VALIDATION ---
+        if pd.isna(arr["Scheduled Time"]) or pd.isna(dep["Scheduled Time"]):
+            continue
+        
+        # STD must be after STA
+        if dep["Scheduled Time"] <= arr["Scheduled Time"]:
+            continue
+        
+        # --- DATE OVERLAP LOGIC (FIXED) ---
+        if dep["Start Date"] > arr["End Date"]:
+            continue
+        
+        if dep["End Date"] < arr["Start Date"]:
+            continue
 
             output_rows.append({
                 "AIRLINE": prefix,
@@ -180,6 +183,9 @@ for r_idx, row in enumerate(output_rows):
 os.makedirs("output", exist_ok=True)
 
 wb.save(OUTPUT_FILE)
+
+print("ARR COUNT:", len(df[df["Type"] == "ARRIVAL"]))
+print("DEP COUNT:", len(df[df["Type"] == "DEPARTURE"]))
 
 print("STEP 2 COMPLETE")
 print("OUTPUT FILE:", OUTPUT_FILE)
