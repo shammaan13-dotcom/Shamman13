@@ -129,7 +129,7 @@ def build_flight_id(arr_id, dep_id):
 output_rows = []
 
 # 🔴 FIXED: removed Scheduled Day restriction
-for prefix, group in df.groupby(["Prefix"]):
+for prefix, group in df.groupby("Prefix"):
 
     arrivals = group[group["Type"] == "ARRIVAL"].copy()
     departures = group[group["Type"] == "DEPARTURE"].copy()
@@ -162,7 +162,7 @@ for prefix, group in df.groupby(["Prefix"]):
             print("MATCH FOUND:", arr["Flight ID"], "->", dep["Flight ID"])
 
             output_rows.append({
-                "AIRLINE": prefix,
+               "AIRLINE": str(prefix),
                 "DAYS OF OPS": arr["Scheduled Day"],
                 "FLT NO": build_flight_id(arr["Flight ID"], dep["Flight ID"]),
                 "STA": arr["Scheduled Time"].strftime("%H:%M"),
