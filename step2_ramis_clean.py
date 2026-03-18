@@ -12,7 +12,7 @@ import os
 # CONFIG (MATCHES STREAMLIT SAVE PATH)
 # ----------------------------------------------------------
 
-INPUT_FILE = "input/connecting_flights.xlsx"
+INPUT_FILE = "input/connecting.xlsx"
 OUTPUT_FILE = "output/RAMIS_ROTATION_FINAL.xlsx"
 
 CONFIG = {
