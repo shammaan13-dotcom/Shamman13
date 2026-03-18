@@ -184,8 +184,6 @@ os.makedirs("output", exist_ok=True)
 
 wb.save(OUTPUT_FILE)
 
-print("ARR COUNT:", len(df[df["Type"] == "ARRIVAL"]))
-print("DEP COUNT:", len(df[df["Type"] == "DEPARTURE"]))
 
 print("STEP 2 COMPLETE")
 print("OUTPUT FILE:", OUTPUT_FILE)
