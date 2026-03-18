@@ -50,7 +50,7 @@ if st.button("Run Process"):
         # --------------------------------------------------
         ramis_path = os.path.abspath(os.path.join(INPUT_DIR, "ramis.xlsx"))
         macl_path = os.path.abspath(os.path.join(INPUT_DIR, "macl_master.xlsx"))
-        conn_path = os.path.abspath(os.path.join(INPUT_DIR, "connecting.xlsx"))
+        conn_path = os.path.abspath(os.path.join(INPUT_DIR, "connecting_flights.xlsx"))
 
         with open(ramis_path, "wb") as f:
             f.write(winter_file.getbuffer())
