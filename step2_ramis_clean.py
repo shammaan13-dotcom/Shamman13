@@ -1,5 +1,5 @@
 # ==========================================================
-# RAMIS CLEAN SHEET FINAL ROTATION ENGINE (FINAL VERSION)
+# RAMIS CLEAN SHEET FINAL ROTATION ENGINE (FINAL DEBUG VERSION)
 # ==========================================================
 
 import pandas as pd
@@ -9,24 +9,30 @@ import os
 
 
 # ----------------------------------------------------------
-# CONFIG (USE ENV VARIABLES FROM STREAMLIT)
+# CONFIG (ROBUST INPUT HANDLING)
 # ----------------------------------------------------------
 
-INPUT_FILE = os.environ.get("CONNECT_FILE") or "input/connecting_flights.xlsx"
+INPUT_FILE = os.environ.get("CONNECT_FILE")
+
+if not INPUT_FILE or not os.path.exists(INPUT_FILE):
+    if os.path.exists("input/connecting.xlsx"):
+        INPUT_FILE = "input/connecting.xlsx"
+    elif os.path.exists("input/connecting_flights.xlsx"):
+        INPUT_FILE = "input/connecting_flights.xlsx"
+    else:
+        raise FileNotFoundError(
+            "Missing connecting file. Checked:\n"
+            "- ENV CONNECT_FILE\n"
+            "- input/connecting.xlsx\n"
+            "- input/connecting_flights.xlsx"
+        )
+
 OUTPUT_FILE = "output/RAMIS_ROTATION_FINAL.xlsx"
 
 CONFIG = {
     "SEASON_START": "2025-10-26",
     "SEASON_END": "2026-03-28"
 }
-
-
-# ----------------------------------------------------------
-# VALIDATE INPUT FILE
-# ----------------------------------------------------------
-
-if not INPUT_FILE or not os.path.exists(INPUT_FILE):
-    raise FileNotFoundError(f"Missing file: {INPUT_FILE}")
 
 
 # ----------------------------------------------------------
@@ -68,7 +74,7 @@ df["Scheduled Time"] = pd.to_datetime(
     errors="coerce"
 )
 
-# AIRLINE PREFIX (FIRST 2 CHARACTERS - LETTER OR NUMBER)
+# PREFIX (first 2 characters - can include number)
 df["Prefix"] = df["Flight ID"].str[:2]
 
 
@@ -88,6 +94,14 @@ print("AFTER FILTER:", len(df))
 
 
 # ----------------------------------------------------------
+# DEBUG COUNTS (IMPORTANT)
+# ----------------------------------------------------------
+
+print("ARR COUNT:", len(df[df["Type"] == "ARRIVAL"]))
+print("DEP COUNT:", len(df[df["Type"] == "DEPARTURE"]))
+
+
+# ----------------------------------------------------------
 # FLIGHT ID BUILDER
 # ----------------------------------------------------------
 
@@ -97,12 +111,11 @@ def build_flight_id(arr_id, dep_id):
     arr_num = arr_id.replace(arr_prefix, "")
     dep_num = dep_id.replace(arr_prefix, "")
 
-    # CASE: 6E1133 + 6E1133-4 → 6E1134
+    # CASE: 6E1133-4 → 6E1134
     if "-" in dep_id:
         base, suffix = dep_id.split("-")
         return f"{arr_prefix}{suffix}"
 
-    # CASE: same base
     if dep_id.startswith(arr_id):
         return f"{arr_id}-{dep_id[len(arr_id):]}"
 
@@ -110,11 +123,12 @@ def build_flight_id(arr_id, dep_id):
 
 
 # ----------------------------------------------------------
-# MATCHING ENGINE (ARR + DEP PAIRING)
+# MATCHING ENGINE (STA → STD)
 # ----------------------------------------------------------
 
 output_rows = []
 
+# 🔴 FIXED: removed Scheduled Day restriction
 for prefix, group in df.groupby(["Prefix"]):
 
     arrivals = group[group["Type"] == "ARRIVAL"].copy()
@@ -125,26 +139,31 @@ for prefix, group in df.groupby(["Prefix"]):
 
     for _, arr in arrivals.iterrows():
 
+        print("CHECKING ARR:", arr["Flight ID"], arr["Scheduled Time"])
+
         for _, dep in departures.iterrows():
-            
-        # --- STA / STD VALIDATION ---
-        if pd.isna(arr["Scheduled Time"]) or pd.isna(dep["Scheduled Time"]):
-            continue
-        
-        # STD must be after STA
-        if dep["Scheduled Time"] <= arr["Scheduled Time"]:
-            continue
-        
-        # --- DATE OVERLAP LOGIC (FIXED) ---
-        if dep["Start Date"] > arr["End Date"]:
-            continue
-        
-        if dep["End Date"] < arr["Start Date"]:
-            continue
+
+            print("   AGAINST DEP:", dep["Flight ID"], dep["Scheduled Time"])
+
+            # --- STA / STD VALIDATION ---
+            if pd.isna(arr["Scheduled Time"]) or pd.isna(dep["Scheduled Time"]):
+                continue
+
+            if dep["Scheduled Time"] <= arr["Scheduled Time"]:
+                continue
+
+            # --- DATE OVERLAP LOGIC ---
+            if dep["Start Date"] > arr["End Date"]:
+                continue
+
+            if dep["End Date"] < arr["Start Date"]:
+                continue
+
+            print("MATCH FOUND:", arr["Flight ID"], "->", dep["Flight ID"])
 
             output_rows.append({
                 "AIRLINE": prefix,
-                "DAYS OF OPS": day,
+                "DAYS OF OPS": arr["Scheduled Day"],
                 "FLT NO": build_flight_id(arr["Flight ID"], dep["Flight ID"]),
                 "STA": arr["Scheduled Time"].strftime("%H:%M"),
                 "STD": dep["Scheduled Time"].strftime("%H:%M"),
@@ -183,7 +202,6 @@ for r_idx, row in enumerate(output_rows):
 os.makedirs("output", exist_ok=True)
 
 wb.save(OUTPUT_FILE)
-
 
 print("STEP 2 COMPLETE")
 print("OUTPUT FILE:", OUTPUT_FILE)
